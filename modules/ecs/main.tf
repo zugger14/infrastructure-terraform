@@ -97,17 +97,19 @@ resource "aws_lb_listener_rule" "app_rule" {
     target_group_arn = aws_lb_target_group.app_tg[each.key].arn
   }
 
-  condition {
-    dynamic "path_pattern" {
-      for_each = each.value.path_pattern != null ? [1] : []
-      content {
+  dynamic "condition" {
+    for_each = each.value.path_pattern != null ? [1] : []
+    content {
+      path_pattern {
         values = [each.value.path_pattern]
       }
     }
+  }
 
-    dynamic "host_header" {
-      for_each = each.value.host_header_pattern != null ? [1] : []
-      content {
+  dynamic "condition" {
+    for_each = each.value.host_header_pattern != null ? [1] : []
+    content {
+      host_header {
         values = each.value.host_header_pattern
       }
     }
