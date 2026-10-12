@@ -1,0 +1,44 @@
+aws_region  = "us-east-1"
+environment = "production"
+
+# Toggle architectures
+enable_ec2_deployment = true
+enable_ecs_deployment = true
+
+# EC2 Options (matching live configuration)
+ec2_instance_type = "t3.micro"
+key_name          = "shirish-webserver"
+
+# ECS Apps (Lowest compute options: 256 CPU = 0.25 vCPU, 512 Memory = 0.5 GB RAM)
+ecs_apps = {
+  portfolio = {
+    cpu                 = 256
+    memory              = 512
+    container_port      = 3000
+    container_image     = "public.ecr.aws/docker/library/node:22-alpine"
+    desired_count       = 1
+    priority            = 100
+    host_header_pattern = ["*"]
+    health_check_path   = "/"
+  }
+  ams = {
+    cpu                 = 256
+    memory              = 512
+    container_port      = 80
+    container_image     = "public.ecr.aws/docker/library/php:7.4-apache"
+    desired_count       = 1
+    priority            = 200
+    host_header_pattern = ["ams.*"]
+    health_check_path   = "/"
+  }
+  musicbook = {
+    cpu                 = 256
+    memory              = 512
+    container_port      = 8000
+    container_image     = "public.ecr.aws/docker/library/php:7.4-fpm-alpine"
+    desired_count       = 1
+    priority            = 300
+    host_header_pattern = ["musicbook.*"]
+    health_check_path   = "/"
+  }
+}
