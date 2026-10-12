@@ -3,10 +3,10 @@ output "vpc_id" {
   value       = module.vpc.vpc_id
 }
 
-output "ec2_public_ip" {
-  description = "Public IP address of the deployed EC2 instance"
-  value       = var.enable_ec2_deployment ? module.ec2[0].public_ip : null
-}
+# output "ec2_public_ip" {
+#   description = "Public IP address of the deployed EC2 instance"
+#   value       = var.enable_ec2_deployment ? module.ec2[0].public_ip : null
+# }
 
 output "alb_dns_name" {
   description = "DNS name of the ECS Application Load Balancer"

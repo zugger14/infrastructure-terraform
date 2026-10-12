@@ -1,13 +1,13 @@
 aws_region  = "us-east-1"
 environment = "production"
 
-# Toggle architectures
-enable_ec2_deployment = true
+# Deployment options (EC2 is managed manually; ECS Fargate hosting enabled)
+enable_ec2_deployment = false
 enable_ecs_deployment = true
 
-# EC2 Options (matching live configuration)
-ec2_instance_type = "t3.micro"
-key_name          = "shirish-webserver"
+# # EC2 Options (Commented out: already provisioned manually)
+# ec2_instance_type = "t3.micro"
+# key_name          = "shirish-webserver"
 
 # ECS Apps (Lowest compute options: 256 CPU = 0.25 vCPU, 512 Memory = 0.5 GB RAM)
 ecs_apps = {
