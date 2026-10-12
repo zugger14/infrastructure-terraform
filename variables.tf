@@ -55,14 +55,14 @@ variable "ecs_apps" {
   }))
   default = {
     portfolio = {
-      cpu                 = 256
-      memory              = 512
-      container_port      = 3000
-      container_image     = "public.ecr.aws/docker/library/node:22-alpine" # Replace with custom ECR image
-      desired_count       = 1
-      priority            = 100
-      host_header_pattern = ["*"] # Default catch-all
-      health_check_path   = "/"
+      cpu               = 256
+      memory            = 512
+      container_port    = 3000
+      container_image   = "public.ecr.aws/docker/library/node:22-alpine" # Replace with custom ECR image
+      desired_count     = 1
+      priority          = 500
+      path_pattern      = "/*" # Root catch-all for portfolio
+      health_check_path = "/"
     }
     ams = {
       cpu                 = 256
@@ -72,6 +72,7 @@ variable "ecs_apps" {
       desired_count       = 1
       priority            = 200
       host_header_pattern = ["ams.*"]
+      path_pattern        = "/ams*"
       health_check_path   = "/"
     }
     musicbook = {
@@ -82,6 +83,7 @@ variable "ecs_apps" {
       desired_count       = 1
       priority            = 300
       host_header_pattern = ["musicbook.*"]
+      path_pattern        = "/musicbook*"
       health_check_path   = "/"
     }
   }

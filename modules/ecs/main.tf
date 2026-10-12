@@ -98,6 +98,13 @@ resource "aws_lb_listener_rule" "app_rule" {
   }
 
   condition {
+    dynamic "path_pattern" {
+      for_each = each.value.path_pattern != null ? [1] : []
+      content {
+        values = [each.value.path_pattern]
+      }
+    }
+
     dynamic "host_header" {
       for_each = each.value.host_header_pattern != null ? [1] : []
       content {

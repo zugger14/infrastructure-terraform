@@ -12,14 +12,14 @@ enable_ecs_deployment = true
 # ECS Apps (Lowest compute options: 256 CPU = 0.25 vCPU, 512 Memory = 0.5 GB RAM)
 ecs_apps = {
   portfolio = {
-    cpu                 = 256
-    memory              = 512
-    container_port      = 3000
-    container_image     = "public.ecr.aws/docker/library/node:22-alpine"
-    desired_count       = 1
-    priority            = 100
-    host_header_pattern = ["*"]
-    health_check_path   = "/"
+    cpu               = 256
+    memory            = 512
+    container_port    = 3000
+    container_image   = "public.ecr.aws/docker/library/node:22-alpine"
+    desired_count     = 1
+    priority          = 500
+    path_pattern      = "/*"
+    health_check_path = "/"
   }
   ams = {
     cpu                 = 256
@@ -29,6 +29,7 @@ ecs_apps = {
     desired_count       = 1
     priority            = 200
     host_header_pattern = ["ams.*"]
+    path_pattern        = "/ams*"
     health_check_path   = "/"
   }
   musicbook = {
@@ -39,6 +40,7 @@ ecs_apps = {
     desired_count       = 1
     priority            = 300
     host_header_pattern = ["musicbook.*"]
+    path_pattern        = "/musicbook*"
     health_check_path   = "/"
   }
 }
