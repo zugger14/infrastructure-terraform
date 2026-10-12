@@ -11,18 +11,18 @@ module "vpc" {
 }
 
 # ==============================================================================
-# 1. EC2 Deployment (Commented out: already provisioned/managed manually)
+# 1. EC2 Deployment (Controlled via variable deployment_target or enable_ec2_deployment)
 # ==============================================================================
-# module "ec2" {
-#   count  = var.enable_ec2_deployment ? 1 : 0
-#   source = "./modules/ec2"
-# 
-#   vpc_id        = module.vpc.vpc_id
-#   public_subnet = module.vpc.public_subnets[0]
-#   instance_type = var.ec2_instance_type
-#   key_name      = var.key_name
-#   environment   = var.environment
-# }
+module "ec2" {
+  count  = (var.deployment_target == "ec2" || var.deployment_target == "both" || var.enable_ec2_deployment) ? 1 : 0
+  source = "./modules/ec2"
+
+  vpc_id        = module.vpc.vpc_id
+  public_subnet = module.vpc.public_subnets[0]
+  instance_type = var.ec2_instance_type
+  key_name      = var.key_name
+  environment   = var.environment
+}
 
 # ==============================================================================
 # 2. Elastic Container Registry (ECR) - DRY per application
@@ -38,7 +38,7 @@ module "ecr" {
 # 3. ECS Fargate Serverless Containers with Application Load Balancer
 # ==============================================================================
 module "alb" {
-  count  = var.enable_ecs_deployment ? 1 : 0
+  count  = (var.deployment_target == "ecs" || var.deployment_target == "both" || var.enable_ecs_deployment) ? 1 : 0
   source = "./modules/alb"
 
   vpc_id         = module.vpc.vpc_id
@@ -47,11 +47,11 @@ module "alb" {
 }
 
 module "ecs" {
-  count  = var.enable_ecs_deployment ? 1 : 0
+  count  = (var.deployment_target == "ecs" || var.deployment_target == "both" || var.enable_ecs_deployment) ? 1 : 0
   source = "./modules/ecs"
 
   vpc_id              = module.vpc.vpc_id
-  private_subnets     = module.vpc.private_subnets
+  subnets             = module.vpc.public_subnets
   alb_listener_arn    = module.alb[0].http_listener_arn
   alb_security_group  = module.alb[0].alb_security_group_id
   environment         = var.environment

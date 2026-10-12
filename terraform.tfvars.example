@@ -1,13 +1,14 @@
 aws_region  = "us-east-1"
 environment = "production"
 
-# Deployment options (EC2 is managed manually; ECS Fargate hosting enabled)
-enable_ec2_deployment = false
-enable_ecs_deployment = true
+# Deployment options:
+# Set deployment_target to "ec2", "ecs", "both", or "none".
+# If left commented out, Terraform will interactively prompt you for the value when running 'terraform apply'.
+# deployment_target = "ecs"
 
-# # EC2 Options (Commented out: already provisioned manually)
-# ec2_instance_type = "t3.micro"
-# key_name          = "shirish-webserver"
+# EC2 Options (used when deployment_target = "ec2" or "both")
+ec2_instance_type = "t3.micro"
+key_name          = "shirish-webserver"
 
 # ECS Apps (Lowest compute options: 256 CPU = 0.25 vCPU, 512 Memory = 0.5 GB RAM)
 ecs_apps = {
@@ -15,7 +16,7 @@ ecs_apps = {
     cpu               = 256
     memory            = 512
     container_port    = 3000
-    container_image   = "public.ecr.aws/docker/library/node:22-alpine"
+    container_image   = "615993872381.dkr.ecr.us-east-1.amazonaws.com/portfolio:latest"
     desired_count     = 1
     priority          = 500
     path_pattern      = "/*"

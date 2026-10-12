@@ -2,8 +2,9 @@ variable "vpc_id" {
   type = string
 }
 
-variable "private_subnets" {
-  type = list(string)
+variable "subnets" {
+  description = "Subnets to place ECS tasks into"
+  type        = list(string)
 }
 
 variable "alb_listener_arn" {

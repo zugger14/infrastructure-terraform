@@ -16,10 +16,21 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "deployment_target" {
+  description = "Target infrastructure to deploy: 'ec2' (single EC2 host with Ansible), 'ecs' (Fargate containers + ALB), 'both', or 'none'"
+  type        = string
+  # No default so Terraform will interactively prompt: "var.deployment_target: Enter a value:"
+  # If a default is needed in non-interactive CI/CD, pass -var="deployment_target=ecs" or define in terraform.tfvars
+  validation {
+    condition     = contains(["ec2", "ecs", "both", "none"], lower(var.deployment_target))
+    error_message = "deployment_target must be one of: 'ec2', 'ecs', 'both', or 'none'."
+  }
+}
+
 variable "enable_ec2_deployment" {
   description = "Flag to enable existing EC2 multi-app single-instance deployment"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "ec2_instance_type" {
@@ -37,7 +48,7 @@ variable "key_name" {
 variable "enable_ecs_deployment" {
   description = "Flag to enable modern multi-service ECS Fargate deployment"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "ecs_apps" {
