@@ -1,0 +1,148 @@
+name: "Terraform CI/CD"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Select Terraform Action to execute"
+        required: true
+        default: "apply"
+        type: choice
+        options:
+          - "apply"
+          - "destroy"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ============================================================================
+  # 1. Validation & Planning (Runs automatically on every push or PR)
+  # ============================================================================
+  validate-and-plan:
+    name: "Validate & Plan"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Create tfvars for Plan if missing
+        run: |
+          if [ ! -f "terraform.tfvars" ]; then
+            cp terraform.tfvars.example terraform.tfvars
+          fi
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color -out=tfplan
+        continue-on-error: false
+
+      - name: Upload Terraform Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: tfplan
+          retention-days: 2
+
+  # ============================================================================
+  # 2. Deploy on Click (Manual Trigger via workflow_dispatch)
+  # ============================================================================
+  deploy:
+    name: "Deploy Infrastructure (On-Demand)"
+    needs: validate-and-plan
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Download Terraform Plan Artifact
+        if: "${{ github.event.inputs.action == 'apply' }}"
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+
+      - name: Create tfvars if missing
+        run: |
+          if [ ! -f "terraform.tfvars" ]; then
+            cp terraform.tfvars.example terraform.tfvars
+          fi
+
+      - name: Terraform Apply
+        if: "${{ github.event.inputs.action == 'apply' }}"
+        run: |
+          echo "==> Applying planned infrastructure changes to AWS..."
+          if [ -f "tfplan" ]; then
+            terraform apply -input=false -auto-approve tfplan
+          else
+            terraform apply -input=false -auto-approve
+          fi
+
+      - name: Terraform Destroy
+        if: "${{ github.event.inputs.action == 'destroy' }}"
+        run: |
+          echo "==> WARNING: Destroying infrastructure on AWS..."
+          terraform destroy -input=false -auto-approve
+
+      - name: Show Deployment Outputs
+        if: "${{ github.event.inputs.action == 'apply' }}"
+        run: |
+          echo "==> Infrastructure Deployment Outputs:"
+          terraform output

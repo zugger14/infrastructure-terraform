@@ -101,3 +101,25 @@ terraform apply
 ```
 
 Outputs will display your EC2 Public IP and the ALB DNS endpoint to test the applications in your browser.
+
+---
+
+## 🔄 Automated CI/CD Pipeline (GitHub Actions)
+
+This repository includes a multi-stage GitHub Actions workflow in [`.github/workflows/terraform.yml`](.github/workflows/terraform.yml):
+
+### 1. Automatic Validation on Push / Pull Request
+Whenever code is pushed to `main` (or a PR is opened):
+- Checks code formatting (`terraform fmt`)
+- Validates configuration and module schemas (`terraform validate`)
+- Generates an execution plan preview (`terraform plan`) and stores the plan artifact
+
+### 2. On-Demand One-Click Deployment (`workflow_dispatch`)
+To apply changes to AWS without risking accidental runs on intermediate commits:
+1. Navigate to the repository on GitHub: **[Actions](https://github.com/zugger14/infrastructure-terraform/actions)**
+2. Select **"Terraform CI/CD"** in the left sidebar
+3. Click the **"Run workflow"** button
+4. Select the action:
+   - `apply` (default): Applies the planned changes safely to AWS
+   - `destroy`: Tears down all resources when no longer needed
+5. Click **"Run workflow"** to execute
