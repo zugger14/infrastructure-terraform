@@ -142,7 +142,7 @@ resource "aws_ecs_task_definition" "app_task" {
   container_definitions = jsonencode([
     {
       name      = each.key
-      image     = each.value.container_image
+      image     = coalesce(each.value.container_image, try("${var.ecr_repository_urls[each.key]}:latest", "public.ecr.aws/docker/library/alpine:latest"))
       essential = true
       portMappings = [
         {

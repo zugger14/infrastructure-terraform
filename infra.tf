@@ -25,7 +25,17 @@ module "vpc" {
 # }
 
 # ==============================================================================
-# 2. OPTION B: ECS Fargate Serverless Containers with Application Load Balancer
+# 2. Elastic Container Registry (ECR) - DRY per application
+# ==============================================================================
+module "ecr" {
+  source = "./modules/ecr"
+
+  repositories = keys(var.ecs_apps)
+  environment  = var.environment
+}
+
+# ==============================================================================
+# 3. ECS Fargate Serverless Containers with Application Load Balancer
 # ==============================================================================
 module "alb" {
   count  = var.enable_ecs_deployment ? 1 : 0
@@ -40,11 +50,12 @@ module "ecs" {
   count  = var.enable_ecs_deployment ? 1 : 0
   source = "./modules/ecs"
 
-  vpc_id             = module.vpc.vpc_id
-  private_subnets    = module.vpc.private_subnets
-  alb_listener_arn   = module.alb[0].http_listener_arn
-  alb_security_group = module.alb[0].alb_security_group_id
-  environment        = var.environment
+  vpc_id              = module.vpc.vpc_id
+  private_subnets     = module.vpc.private_subnets
+  alb_listener_arn    = module.alb[0].http_listener_arn
+  alb_security_group  = module.alb[0].alb_security_group_id
+  environment         = var.environment
+  ecr_repository_urls = module.ecr.repository_urls
 
   apps = var.ecs_apps
 }

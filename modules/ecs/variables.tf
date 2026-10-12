@@ -23,11 +23,17 @@ variable "apps" {
     cpu                 = number
     memory              = number
     container_port      = number
-    container_image     = string
+    container_image     = optional(string)
     desired_count       = number
     priority            = number
     path_pattern        = optional(string)
     host_header_pattern = optional(list(string))
     health_check_path   = optional(string)
   }))
+}
+
+variable "ecr_repository_urls" {
+  description = "Map of application names to ECR repository URLs"
+  type        = map(string)
+  default     = {}
 }

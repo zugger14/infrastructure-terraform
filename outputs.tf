@@ -22,3 +22,8 @@ output "ecs_services" {
   description = "List of active ECS Services deployed"
   value       = var.enable_ecs_deployment ? module.ecs[0].service_names : null
 }
+
+output "ecr_repositories" {
+  description = "Map of ECR repository URLs for pushing container images"
+  value       = module.ecr.repository_urls
+}
