@@ -1,21 +1,29 @@
 # Multi-App AWS Infrastructure as Code (Terraform)
 
-A modular, production-grade, and 100% DRY Terraform repository providing two parallel deployment paradigms for the **DevOps Portfolio**, **AMS**, and **MusicBook** web applications:
+A modular, production-grade, and 100% DRY Terraform repository providing flexible deployment paradigms for the **DevOps Portfolio**, **AMS**, and **MusicBook** web applications:
 
-1. **Option A: EC2 Multi-App Single-Host Architecture**
-   - Directly mirrors the active AWS EC2 setup (`t3.micro`, Amazon Linux 2023).
-   - Inbound rules configured for Port `22` (SSH), Port `80` (HTTP root & subdomain reverse proxy), Port `8080` (AMS direct port), Port `8000` (MusicBook direct port), and Port `3000` (Portfolio container direct port).
+1. **Option A: EC2 Multi-App Single-Host Architecture (`deployment_target = "ec2"`)**
+   - Directly provisions an AWS EC2 instance (`t3.micro`, Amazon Linux 2023) designed to be configured with the standalone Ansible repository.
+   - Inbound security groups configured for Port `22` (SSH), Port `80` (HTTP root & subdomain reverse proxy), Port `8080` (AMS direct), Port `8000` (MusicBook direct), and Port `3000` (Portfolio container direct).
 
-2. **Option B: Serverless ECS Fargate Microservices with Application Load Balancer**
+2. **Option B: Serverless ECS Fargate Microservices with ALB (`deployment_target = "ecs"`)**
    - High-availability, self-healing, zero-OS maintenance.
    - Deploys **three isolated containers** for `ams`, `devops-portfolio`, and `musicbook`.
    - Uses the **lowest compute options available on AWS Fargate**:
      - **CPU**: `256` (`0.25 vCPU`) per task
      - **Memory**: `512` (`0.5 GB RAM`) per task
-   - Automatically provisions an **AWS Application Load Balancer (ALB)** with Host-based routing rules forwarding:
-     - `http://<ALB_DNS>/` (or any custom domain) ➔ `portfolio` container
-     - `http://ams.*` ➔ `ams` container
-     - `http://musicbook.*` ➔ `musicbook` container
+   - Automatically provisions an **AWS Application Load Balancer (ALB)** with path and host routing rules forwarding:
+     - `http://<ALB_DNS>/` (and root path `/*`) ➔ `portfolio` container
+     - `http://<ALB_DNS>/ams*` (or `http://ams.*`) ➔ `ams` container
+     - `http://<ALB_DNS>/musicbook*` (or `http://musicbook.*`) ➔ `musicbook` container
+
+3. **Option C: Elastic Container Registry (ECR)**
+   - DRY private ECR repositories for all applications with 14-day automated image lifecycle expiration.
+   - Built with `force_delete = true` so running `terraform destroy` cleanly tears down repositories even if container images have been pushed.
+
+4. **Option D: Remote State & Locking (S3 + DynamoDB)**
+   - Remote state storage in AWS S3 (`multiapp-terraform-state-<ACCOUNT_ID>`) with server-side encryption and versioning.
+   - Concurrency locking via DynamoDB (`terraform-state-locks`) to safely sync state between local runs and GitHub Actions CI/CD.
 
 ---
 
@@ -23,7 +31,7 @@ A modular, production-grade, and 100% DRY Terraform repository providing two par
 
 ```text
 infrastructure-terraform/
-├── main.tf                      # Terraform & AWS provider requirements
+├── main.tf                      # S3 Remote backend & AWS provider requirements
 ├── variables.tf                 # Global input variables & app mapping
 ├── infra.tf                     # Master orchestrator connecting all modules
 ├── outputs.tf                   # Public IP, ALB DNS, and cluster outputs
@@ -41,6 +49,10 @@ infrastructure-terraform/
     │   ├── main.tf
     │   ├── variables.tf
     │   └── outputs.tf
+    ├── ecr/                     # DRY ECR repos with force_delete and lifecycle policies
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
     └── ecs/                     # DRY ECS Fargate cluster, task definitions, and target groups
         ├── main.tf
         ├── variables.tf
@@ -53,7 +65,7 @@ infrastructure-terraform/
 
 You **never need to duplicate module code or write new task definitions** to add another application.
 
-Everything in the `ecs` module is dynamically generated using Terraform's `for_each` over the `var.ecs_apps` map.
+Everything in the `ecs` and `ecr` modules is dynamically generated using Terraform's `for_each` over the `var.ecs_apps` map.
 
 To add a 4th or 5th app in the future, simply add an entry in `terraform.tfvars`:
 ```hcl
@@ -67,12 +79,13 @@ ecs_apps = {
     container_image     = "public.ecr.aws/youruser/new_app:latest"
     desired_count       = 1
     priority            = 400
+    path_pattern        = "/newapp*"
     host_header_pattern = ["newapp.*"]
     health_check_path   = "/"
   }
 }
 ```
-Terraform automatically creates the CloudWatch Log Group, ECS Task Definition, Fargate Service, Target Group, and ALB routing rule.
+Terraform automatically creates the private ECR repo, CloudWatch Log Group, ECS Task Definition, Fargate Service, Target Group, and ALB routing rule.
 
 ---
 
@@ -87,20 +100,48 @@ Copy the sample file:
 ```bash
 cp terraform.tfvars.example terraform.tfvars
 ```
-Adjust `enable_ec2_deployment` or `enable_ecs_deployment` to `true`/`false` depending on what you want to provision.
 
 ### 3. Initialize & Plan
+Initialize the S3 remote backend:
 ```bash
 terraform init
-terraform plan
 ```
 
-### 4. Apply
+### 4. Interactive Apply
+Run:
 ```bash
 terraform apply
 ```
+Terraform will interactively prompt you:
+```text
+var.deployment_target
+  Target infrastructure to deploy: 'ec2' (single EC2 host with Ansible), 'ecs' (Fargate containers + ALB), 'both', or 'none'
 
-Outputs will display your EC2 Public IP and the ALB DNS endpoint to test the applications in your browser.
+  Enter a value: 
+```
+
+You can also pass it directly as a CLI flag or in `terraform.tfvars`:
+```bash
+# Deploy ECS Fargate containers and ALB
+terraform apply -var="deployment_target=ecs"
+
+# Deploy EC2 host
+terraform apply -var="deployment_target=ec2"
+
+# Deploy both
+terraform apply -var="deployment_target=both"
+```
+
+Outputs will display your EC2 Public IP, ECR repository URLs, and the ALB DNS endpoint to test the applications in your browser.
+
+---
+
+## 🧹 Destroying Resources
+When destroying resources:
+```bash
+terraform destroy
+```
+Because `force_delete = true` is configured on all ECR repositories, Terraform will cleanly destroy all resources without failing on non-empty image repositories.
 
 ---
 
