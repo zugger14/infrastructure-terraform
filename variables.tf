@@ -97,5 +97,16 @@ variable "ecs_apps" {
       path_pattern        = "/musicbook*"
       health_check_path   = "/"
     }
+    mindflow = {
+      cpu                 = 256
+      memory              = 512
+      container_port      = 3020
+      container_image     = "public.ecr.aws/docker/library/node:22-alpine" # Replace with custom ECR image
+      desired_count       = 1
+      priority            = 400
+      host_header_pattern = ["mindflow.*"]
+      path_pattern        = "/mindflow*"
+      health_check_path   = "/"
+    }
   }
 }
